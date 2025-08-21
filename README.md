@@ -1,4 +1,4 @@
-# NovaBrush_1-pixel-array
+# NovaBrush 1-Pixel-Array module
 ## What It Does
 The 1-Pixel-Array module does the following to NovaBrush. 
 It handles:
@@ -10,3 +10,5 @@ It handles:
 - Zooming toward the mouse
 - Status bar with real-time mouse position
 All built in pure C#.
+
+<img src="https://github.com/eduardodias2002/eduardodias2002.github.io/raw/refs/heads/main/img/scrnsh1.webp">
