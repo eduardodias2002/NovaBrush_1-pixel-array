@@ -1,0 +1,215 @@
+﻿using System.Windows;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Controls;
+using System.Diagnostics;
+
+
+namespace _1_pixel_array {
+    public class CanvasPanel : FrameworkElement {
+        public WriteableBitmap BitmapToDraw { get; private set; }
+        public MainWindow mainWindow;
+
+        private byte[] pixelData;
+        private int stride;
+        private Point _lastMousePosition;
+        private Point _dragOffset;
+        private ScaleTransform _scaleTransform;
+
+        private bool _isPanning = false;
+        private double _currentZoom = 1.0;
+        public float PixelVal { get; set; } = 1.0f;
+
+        public int CanvasHeight = 32;
+        public int CanvasWidth = 32;
+
+        // Load file
+        public void LoadBitmap(WriteableBitmap bitmap) {
+            this.BitmapToDraw = bitmap;
+            InvalidateVisual();
+        }
+        // Render
+        protected override void OnRender(DrawingContext dc) {
+            base.OnRender(dc);
+
+            if (BitmapToDraw != null) {
+                dc.DrawImage(BitmapToDraw, new Rect(0, 0, BitmapToDraw.PixelWidth * PixelVal, BitmapToDraw.PixelHeight * PixelVal));
+            }
+        }
+        // Places a pixel
+        public void SetPixel(int x, int y, Color color) {
+            if (BitmapToDraw == null) return;
+
+            BitmapToDraw.Lock(); // reserves buffer for updates
+
+            unsafe {
+                int bytesPerPixel = (BitmapToDraw.Format.BitsPerPixel + 7) / 8;
+                int stride = BitmapToDraw.BackBufferStride;
+                IntPtr buffer = BitmapToDraw.BackBuffer;
+
+                if (x < 0 || y < 0 || x >= BitmapToDraw.PixelWidth || y >= BitmapToDraw.PixelHeight)
+                    return;
+
+                byte* pixel = (byte*)buffer + y * stride + x * bytesPerPixel;
+
+                pixel[0] = color.B;
+                pixel[1] = color.G;
+                pixel[2] = color.R;
+                pixel[3] = color.A;
+            }
+
+            BitmapToDraw.AddDirtyRect(new Int32Rect(x, y, 1, 1));
+            BitmapToDraw.Unlock();
+
+            InvalidateVisual(); // So it triggers an update
+        }
+
+        // The canvas panel itself
+        public CanvasPanel() {
+            // Find the window and attach to it once
+
+            PreviewMouseWheel += Window_PreviewMouseWheel;
+
+            Loaded += (_, __) =>
+            {
+                Window.GetWindow(this).PreviewMouseWheel += Window_PreviewMouseWheel;
+                Window.GetWindow(this).MouseDown += CanvasPanel_MouseDown;
+                Window.GetWindow(this).MouseMove += CanvasPanel_MouseMove;
+                Window.GetWindow(this).MouseUp += CanvasPanel_MouseUp;
+                Window.GetWindow(this).KeyDown += Window_KeyDown;
+            };
+            this.MouseDown += CanvasPanel_UseTool;
+
+            //this.DebugKey += debugKey;
+
+            _scaleTransform = new ScaleTransform(_currentZoom, _currentZoom);
+            RenderTransform = _scaleTransform;
+            RenderTransformOrigin = new Point(0, 0);
+        }
+
+        // Zooming in and out
+        private void Window_PreviewMouseWheel(object sender, MouseWheelEventArgs e) {
+            if (Keyboard.Modifiers == ModifierKeys.Control) {
+                e.Handled = true;
+                Point mousePos = e.GetPosition(Parent as UIElement);
+                double oldZoom = _currentZoom;
+
+                double worldX = (mousePos.X - Canvas.GetLeft(this)) / oldZoom;
+                double worldY = (mousePos.Y - Canvas.GetTop(this)) / oldZoom;
+
+                double zoomFactor = e.Delta > 0f ? 1.1f : 1f / 1.1f;
+                _currentZoom = Math.Clamp(_currentZoom * zoomFactor, 0.1f, 10.0f);
+
+                double newLeft = mousePos.X - (worldX * _currentZoom);
+                double newTop = mousePos.Y - (worldY * _currentZoom);
+
+                _scaleTransform.ScaleX = _currentZoom;
+                _scaleTransform.ScaleY = _currentZoom;
+
+                Canvas.SetLeft(this, newLeft);
+                Canvas.SetTop(this, newTop);
+
+                InvalidateVisual();
+            }
+        }
+
+        // When middle mouse is pressed, un/set panning mode
+        private void CanvasPanel_MouseDown(object sender, MouseButtonEventArgs e){
+                if (e.MiddleButton == MouseButtonState.Pressed){
+                _dragOffset = e.GetPosition(this);
+                _isPanning = !_isPanning;
+                Mouse.Capture(this);
+            }
+        }
+
+        // When the current tool is being used, single pixel is temp
+        private void CanvasPanel_UseTool(object sender, MouseButtonEventArgs e){
+            if (e.LeftButton == MouseButtonState.Pressed){
+                Point mousePos = e.GetPosition(this);
+                int x = (int)(mousePos.X / PixelVal);
+                int y = (int)(mousePos.Y / PixelVal);
+                SetPixel(x, y, Color.FromArgb(255, 255, 0, 0)); // Paints black (temp)
+            }
+        }
+
+        // While moving and panning...
+        private void CanvasPanel_MouseMove(object sender, MouseEventArgs e){
+            Point worldPos = e.GetPosition(this);
+            Globals.MousePositionLabel.Text = $"X: {(int)worldPos.X}  Y: {(int)worldPos.Y}";
+
+            if (_isPanning)
+            {
+                Point mousePos = e.GetPosition(Parent as UIElement);
+
+                double newLeft = mousePos.X - _dragOffset.X * (_currentZoom);
+                double newTop = mousePos.Y - _dragOffset.Y * (_currentZoom);
+
+                double clampNewLeft = Math.Clamp(newLeft, (0) - BitmapToDraw.PixelWidth  * (_currentZoom), Globals.CanvasPanelLabel.ActualWidth); 
+                double clampNewTop = Math.Clamp(newTop, (0) - BitmapToDraw.PixelHeight * (_currentZoom), Globals.CanvasPanelLabel.ActualHeight); // Temp panning limit
+
+                Canvas.SetLeft(this, (int)clampNewLeft);
+                Canvas.SetTop(this, (int)clampNewTop);
+
+                InvalidateVisual();
+            }
+        }
+        // When the middle mouse is released
+        private void CanvasPanel_MouseUp(object sender, MouseEventArgs e) {
+            if (e.MiddleButton == MouseButtonState.Released)
+            {
+                _isPanning = false;
+                Mouse.Capture(null);
+            }
+        }
+    
+        // Prepares the canvas, color palette and such
+        public void prepareCanvas(){
+            BitmapToDraw = new WriteableBitmap(
+            CanvasWidth,
+            CanvasHeight,
+            96, // DPI X
+            96, // DPI Y
+            PixelFormats.Bgra32, // 32-bit color (8 bits per channel)
+            null
+            );
+
+            FillCanvasWithColor(0xFFFFFFFF); // Fully white
+            RenderOptions.SetBitmapScalingMode(this, BitmapScalingMode.NearestNeighbor);
+        }
+
+        // Fills every pixel with the #FFFFFF
+        public void FillCanvasWithColor(uint argbColor){
+            BitmapToDraw.Lock();
+
+            unsafe
+            {
+                uint* pBackBuffer = (uint*)BitmapToDraw.BackBuffer;
+
+                for (int y = 0; y < 32; y++) // 32px tall
+                {
+                    for (int x = 0; x < 32; x++) //32px wide, so a 32x32 canvas for now
+                    {
+                        // Calculate index: row * width + column
+                        int index = y * CanvasWidth + x;
+
+                        // Write color directly to buffer
+                        pBackBuffer[index] = argbColor;
+                    }
+                }
+            }
+            BitmapToDraw.AddDirtyRect(new Int32Rect(0, 0, CanvasWidth, CanvasHeight));
+            BitmapToDraw.Unlock();
+        }
+
+        // Debug key
+        private void Window_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.F5)
+            {
+                //Globals.MousePositionLabel.Text = $"X: {BitmapToDraw.PixelHeight}";
+            }
+
+        }
+    }
+}
