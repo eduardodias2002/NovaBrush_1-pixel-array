@@ -2,7 +2,7 @@
 using System.Data;
 using System.Windows;
 
-namespace _1_pixel_array
+namespace _Novabrush
 {
     /// <summary>
     /// Interaction logic for App.xaml

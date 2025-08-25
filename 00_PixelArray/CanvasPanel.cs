@@ -6,7 +6,7 @@ using System.Windows.Controls;
 using System.Diagnostics;
 
 
-namespace _1_pixel_array {
+namespace _Novabrush{
     public class CanvasPanel : FrameworkElement {
         public WriteableBitmap BitmapToDraw { get; private set; }
         public MainWindow mainWindow;

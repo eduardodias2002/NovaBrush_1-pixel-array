@@ -15,7 +15,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Win32;
 
-namespace _1_pixel_array{
+namespace _Novabrush{
 
     public partial class MainWindow : Window{
 

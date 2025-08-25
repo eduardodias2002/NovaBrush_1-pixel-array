@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Controls;
 
-namespace _1_pixel_array{
+namespace _Novabrush{
     public static class Globals {
         public static TextBlock MousePositionLabel { get; private set; }
         public static Canvas CanvasPanelLabel { get; private set; }
