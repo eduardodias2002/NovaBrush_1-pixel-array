@@ -8,7 +8,6 @@ It handles:
 - Panning with middle click
 - Placing individual pixels
 - Zooming toward the mouse
-- Status bar with real-time mouse position
-All built in pure C#.
+- Status bar with real-time mouse pixel position
 
 <img src="https://github.com/eduardodias2002/eduardodias2002.github.io/raw/refs/heads/main/img/scrnsh1.webp">
