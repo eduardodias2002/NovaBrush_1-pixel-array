@@ -10,4 +10,4 @@ It handles:
 - Zooming toward the mouse
 - Status bar with real-time mouse pixel position
 
-<img src="https://github.com/eduardodias2002/eduardodias2002.github.io/raw/refs/heads/main/img/scrnsh1.webp">
+<img src="https://raw.githubusercontent.com/eduardodias2002/eduardodias2002.github.io/refs/heads/dump/img/scrnsh1.webp">
